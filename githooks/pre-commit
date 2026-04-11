@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+# Scan staged changes for common secret patterns before commit.
+# Local protection only; keeps sensitive values out of remote repos (e.g. GitHub).
+
+if ! command -v git >/dev/null 2>&1; then
+  echo "git not found; skipping secret scan."
+  exit 0
+fi
+
+STAGED_DIFF="$(git diff --cached --no-color --unified=0)"
+if [[ -z "${STAGED_DIFF}" ]]; then
+  exit 0
+fi
+
+# Patterns target common secrets while allowing example placeholders.
+# We only inspect added lines (+) from the staged patch.
+if printf '%s\n' "$STAGED_DIFF" | awk '
+  BEGIN { bad=0 }
+  /^\+\+\+/ { next }                 # skip file markers
+  /^\+/ {
+    line=substr($0,2)
+    low=tolower(line)
+
+    # Ignore obvious template/example/doc values.
+    if (line ~ /example|changeme|your[_-]?key|dummy|sample|test[-_]?key|placeholder/) next
+    if (line ~ /\.\.\./) next
+    # Backticks as \140 — a /.../ regex cannot start with ` or the delimiter breaks; the old pattern skipped real secrets.
+    if (match(tolower(line), /\140[^\140]*(_api_key|token|password|secret|openrouter_api_key)[^\140]*\140/)) next
+
+    if (low ~ /openrouter_api_key[[:space:]]*=/) bad=1
+    if (low ~ /api[_-]?key[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
+    if (low ~ /secret[_-]?key[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
+    if (low ~ /access[_-]?token[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
+    if (low ~ /auth[_-]?token[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
+    if (low ~ /password[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
+    if (line ~ /(sk-|rk_live_|ghp_)[A-Za-z0-9_\-]{10,}/) bad=1
+  }
+  END { exit(bad ? 0 : 1) }
+'; then
+  echo ""
+  echo "ERROR: Potential secret detected in staged changes."
+  echo "Commit blocked to protect credentials from being pushed."
+  echo ""
+  echo "If this is intentional test data, replace it with placeholders"
+  echo "or unstage the file and keep the real value only in local .env files."
+  exit 1
+fi
+
+exit 0
