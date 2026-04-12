@@ -9,6 +9,22 @@ if [ ! -f server.js ]; then
   exit 1
 fi
 
+if [ -z "${DATABASE_URL:-}" ]; then
+  echo "start.sh: DATABASE_URL is not set. On Railway, add Postgres and set DATABASE_URL to the database service URL (not localhost)." >&2
+  exit 1
+fi
+
+# Railway (and similar hosts) cannot reach your machine — local Docker URLs will fail with P1001.
+if [ -n "${RAILWAY_ENVIRONMENT:-}" ] || [ -n "${RAILWAY_SERVICE_ID:-}" ]; then
+  case "${DATABASE_URL}" in
+    *localhost*|*127.0.0.1*)
+      echo "start.sh: DATABASE_URL uses localhost, which is wrong on Railway." >&2
+      echo "      In the Railway dashboard: Variables → set DATABASE_URL from your Postgres plugin (e.g. reference \${{Postgres.DATABASE_URL}}) or paste the connection string Railway shows for Postgres." >&2
+      exit 1
+      ;;
+  esac
+fi
+
 echo "Running database migrations..."
 if ! npx prisma migrate deploy; then
   echo "start.sh: prisma migrate deploy failed." >&2
