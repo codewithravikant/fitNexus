@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { forgotPasswordSchema } from '@/lib/validations/auth';
 import { generatePasswordResetToken } from '@/lib/tokens';
-import { sendPasswordResetEmail } from '@/lib/email';
+import { sendPasswordResetEmail, getOutboundEmailDiagnostics } from '@/lib/email';
 import { handleApiError } from '@/lib/api-error';
 
 export async function POST(request: Request) {
@@ -17,8 +17,9 @@ export async function POST(request: Request) {
       const token = await generatePasswordResetToken(user.id);
       try {
         await sendPasswordResetEmail(email, token);
-      } catch {
-        console.error('Failed to send password reset email');
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        console.error('Failed to send password reset email:', detail, getOutboundEmailDiagnostics(), err);
       }
     }
 

@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { hashPassword } from '@/lib/auth-helpers';
 import { signupSchema } from '@/lib/validations/auth';
 import { generateVerificationToken } from '@/lib/tokens';
-import { sendVerificationEmail } from '@/lib/email';
+import { sendVerificationEmail, getOutboundEmailDiagnostics } from '@/lib/email';
 import { handleApiError, ApiError } from '@/lib/api-error';
 
 export async function POST(request: Request) {
@@ -29,7 +29,7 @@ export async function POST(request: Request) {
       emailSent = true;
     } catch (emailError) {
       const detail = emailError instanceof Error ? emailError.message : String(emailError);
-      console.error('Failed to send verification email:', detail, emailError);
+      console.error('Failed to send verification email:', detail, getOutboundEmailDiagnostics(), emailError);
     }
 
     return NextResponse.json(
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
         emailSent,
         message: emailSent
           ? 'Account created. Please check your email to verify your account.'
-          : 'Account created, but the verification email could not be sent. Configure SMTP or RESEND_API_KEY in .env, or ask an admin to verify your email.',
+          : 'Account created, but the verification email could not be sent. Configure SMTP (SMTP_HOST or MAIL_HOST, SMTP_USER, SMTP_PASS) or RESEND_API_KEY on the server, or ask an admin to verify your email.',
       },
       { status: 201 }
     );

@@ -127,6 +127,18 @@ function smtpEnv(name: 'SMTP_HOST' | 'SMTP_USER' | 'SMTP_PASS' | 'SMTP_PORT'): s
   return t.length > 0 ? t : undefined;
 }
 
+function trimEnvKey(key: string): string | undefined {
+  const v = process.env[key];
+  if (v == null) return undefined;
+  const t = v.trim();
+  return t.length > 0 ? t : undefined;
+}
+
+/** Host: `SMTP_HOST`, or common aliases `MAIL_HOST` / `EMAIL_HOST` (some hosts use those names). */
+function smtpHost(): string | undefined {
+  return smtpEnv('SMTP_HOST') || trimEnvKey('MAIL_HOST') || trimEnvKey('EMAIL_HOST');
+}
+
 /** Many docs use SMTP_PASSWORD; we accept both. */
 function smtpPass(): string | undefined {
   const a = smtpEnv('SMTP_PASS');
@@ -138,21 +150,21 @@ function smtpPass(): string | undefined {
 }
 
 function smtpEnabled() {
-  return Boolean(smtpEnv('SMTP_HOST') && smtpEnv('SMTP_USER') && smtpPass());
+  return Boolean(smtpHost() && smtpEnv('SMTP_USER') && smtpPass());
 }
 
 async function sendViaResend(to: string, subject: string, html: string) {
   const resendKey = process.env.RESEND_API_KEY?.trim();
-  if (resendKey) {
-    const resend = new Resend(resendKey);
-    await resend.emails.send({
-      from: fromAddress(),
-      to,
-      subject,
-      html,
-    });
-    return;
+  if (!resendKey) {
+    throw new Error('RESEND_API_KEY is not set');
   }
+  const resend = new Resend(resendKey);
+  await resend.emails.send({
+    from: fromAddress(),
+    to,
+    subject,
+    html,
+  });
 }
 
 async function sendViaSmtp(to: string, subject: string, html: string) {
@@ -160,7 +172,7 @@ async function sendViaSmtp(to: string, subject: string, html: string) {
     return;
   }
 
-  const host = smtpEnv('SMTP_HOST') as string;
+  const host = smtpHost() as string;
   const user = smtpEnv('SMTP_USER') as string;
   const pass = smtpPass() as string;
   const port = Number(smtpEnv('SMTP_PORT') || '465');
@@ -225,7 +237,7 @@ async function sendEmail(to: string, subject: string, html: string) {
 
   if (!hasSmtp && !hasResend) {
     throw new Error(
-      'No email provider configured. On Railway, add to the **web** service: RESEND_API_KEY, or SMTP_HOST + SMTP_USER + SMTP_PASS (Gmail App Password; optional SMTP_PORT 465/587). Names must be exact — use SMTP_PASS or SMTP_PASSWORD.',
+      'No email provider configured. On the web service set SMTP_HOST (or MAIL_HOST), SMTP_USER, SMTP_PASS or SMTP_PASSWORD, optional SMTP_PORT; or set RESEND_API_KEY. Gmail needs an App Password.',
     );
   }
 }
@@ -256,6 +268,23 @@ export async function sendPasswordResetEmail(email: string, token: string) {
     secondaryHint: "If the button doesn't work, copy and paste this link into your browser:",
   });
   await sendEmail(email, `Reset your ${appName()} password`, html);
+}
+
+/** For logs only — booleans, no secrets. */
+export function getOutboundEmailDiagnostics(): {
+  smtpReady: boolean;
+  resendConfigured: boolean;
+  hasHost: boolean;
+  hasUser: boolean;
+  hasPass: boolean;
+} {
+  return {
+    smtpReady: smtpEnabled(),
+    resendConfigured: Boolean(process.env.RESEND_API_KEY?.trim()),
+    hasHost: Boolean(smtpHost()),
+    hasUser: Boolean(smtpEnv('SMTP_USER')),
+    hasPass: Boolean(smtpPass()),
+  };
 }
 
 export const __emailInternals = {

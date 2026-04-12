@@ -66,9 +66,11 @@ export function SignupForm() {
               </div>
               <h3 className="text-lg font-semibold">Account created — email not sent</h3>
               <p className="text-sm text-muted-foreground text-left max-w-md mx-auto">
-                Mail isn&apos;t configured or the provider rejected the send. Set <code className="text-xs bg-muted px-1 rounded">RESEND_API_KEY</code> or{' '}
-                <code className="text-xs bg-muted px-1 rounded">SMTP_*</code> in your environment (e.g. <code className="text-xs bg-muted px-1 rounded">.env</code> locally or Railway Variables), redeploy or restart, then use{' '}
-                <strong>Forgot password</strong> or verify your user in the database. Your account still exists.
+                Outbound mail isn&apos;t working (missing config or Gmail/SMTP rejected the send). On the server, set{' '}
+                <code className="text-xs bg-muted px-1 rounded">SMTP_HOST</code> (or <code className="text-xs bg-muted px-1 rounded">MAIL_HOST</code>),{' '}
+                <code className="text-xs bg-muted px-1 rounded">SMTP_USER</code>, <code className="text-xs bg-muted px-1 rounded">SMTP_PASS</code> (App Password for Gmail), optional{' '}
+                <code className="text-xs bg-muted px-1 rounded">SMTP_PORT</code>, or use <code className="text-xs bg-muted px-1 rounded">RESEND_API_KEY</code>. Apply on the{' '}
+                <strong>web</strong> service (Railway Variables), redeploy, then use <strong>Forgot password</strong> or verify the user in the database. Your account still exists.
               </p>
             </>
           ) : (
