@@ -135,6 +135,8 @@ The repo includes [`railway.toml`](railway.toml) (Dockerfile builder, `/api/heal
 
 On each deploy, [`start.sh`](start.sh) runs `prisma migrate deploy` before `node server.js`, so migrations apply automatically.
 
+**Email on Railway:** Many platforms (including Railway) **block outbound SMTP** (ports 465/587), so connections to Gmail’s `smtp.gmail.com` often end with **`ETIMEDOUT`**. Use **[Resend](https://resend.com)** with **`RESEND_API_KEY`** (HTTPS, port 443) instead of Gmail SMTP for production. You can keep Gmail SMTP in local `.env` for development.
+
 ---
 
 ## Environment variables
@@ -354,5 +356,6 @@ npm install prisma@latest @prisma/client@latest
 ```
 
 ---
+
 
 *Repository name: **numbers-don’t-lie**. Product name in copy: **FitNexus**.*

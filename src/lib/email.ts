@@ -167,6 +167,22 @@ async function sendViaResend(to: string, subject: string, html: string) {
   });
 }
 
+function isSmtpPortBlockedError(err: unknown): boolean {
+  const codes = new Set(['ETIMEDOUT', 'ECONNREFUSED', 'ENETUNREACH', 'EHOSTUNREACH']);
+  const check = (e: unknown): boolean => {
+    if (e && typeof e === 'object' && 'code' in e && codes.has(String((e as { code?: string }).code))) {
+      return true;
+    }
+    const msg = e instanceof Error ? e.message : String(e);
+    return /ETIMEDOUT|ECONNREFUSED|ENETUNREACH/i.test(msg);
+  };
+  if (check(err)) return true;
+  if (err instanceof AggregateError && Array.isArray(err.errors)) {
+    return err.errors.some((e) => check(e));
+  }
+  return false;
+}
+
 async function sendViaSmtp(to: string, subject: string, html: string) {
   if (!smtpEnabled()) {
     return;
@@ -186,32 +202,42 @@ async function sendViaSmtp(to: string, subject: string, html: string) {
 
   const ehloHostname = process.env.SMTP_EHLO_HOSTNAME?.trim() || host;
 
-  await client.connect();
   try {
-    await client.greet({ hostname: ehloHostname });
-    if (!implicitTls && client.hasExtension('STARTTLS')) {
-      await client.secure();
+    await client.connect();
+    try {
       await client.greet({ hostname: ehloHostname });
+      if (!implicitTls && client.hasExtension('STARTTLS')) {
+        await client.secure();
+        await client.greet({ hostname: ehloHostname });
+      }
+      await client.authPlain({ username: user, password: pass });
+      // SMTP envelope sender must be a plain email address (no display name).
+      await client.mail({ from: envelopeFromAddress() });
+      await client.rcpt({ to });
+
+      const message = [
+        `From: ${fromAddress()}`,
+        `To: ${to}`,
+        `Subject: ${subject}`,
+        'MIME-Version: 1.0',
+        'Content-Type: text/html; charset=UTF-8',
+        '',
+        html,
+        '',
+      ].join('\r\n');
+
+      await client.data(message);
+    } finally {
+      await client.quit();
     }
-    await client.authPlain({ username: user, password: pass });
-    // SMTP envelope sender must be a plain email address (no display name).
-    await client.mail({ from: envelopeFromAddress() });
-    await client.rcpt({ to });
-
-    const message = [
-      `From: ${fromAddress()}`,
-      `To: ${to}`,
-      `Subject: ${subject}`,
-      'MIME-Version: 1.0',
-      'Content-Type: text/html; charset=UTF-8',
-      '',
-      html,
-      '',
-    ].join('\r\n');
-
-    await client.data(message);
-  } finally {
-    await client.quit();
+  } catch (err) {
+    if (isSmtpPortBlockedError(err)) {
+      throw new Error(
+        'SMTP connection failed (often ETIMEDOUT). Railway and many hosts block outbound SMTP ports 465/587. Use RESEND_API_KEY (HTTPS) instead, or run mail from a network that allows SMTP.',
+        { cause: err },
+      );
+    }
+    throw err;
   }
 }
 
@@ -219,25 +245,26 @@ async function sendEmail(to: string, subject: string, html: string) {
   const hasSmtp = smtpEnabled();
   const hasResend = Boolean(process.env.RESEND_API_KEY?.trim());
 
-  if (hasSmtp) {
+  // Resend uses HTTPS (port 443) and works on Railway; SMTP is often blocked there. Try Resend first when both are set.
+  if (hasResend) {
     try {
-      await sendViaSmtp(to, subject, html);
+      await sendViaResend(to, subject, html);
       return;
     } catch (error) {
-      if (!hasResend) {
+      if (!hasSmtp) {
         throw error;
       }
     }
   }
 
-  if (hasResend) {
-    await sendViaResend(to, subject, html);
+  if (hasSmtp) {
+    await sendViaSmtp(to, subject, html);
     return;
   }
 
   if (!hasSmtp && !hasResend) {
     throw new Error(
-      'No email provider configured. On the web service set SMTP_HOST (or MAIL_HOST), SMTP_USER, SMTP_PASS or SMTP_PASSWORD, optional SMTP_PORT; or set RESEND_API_KEY. Gmail needs an App Password.',
+      'No email provider configured. On the web service set SMTP_HOST (or MAIL_HOST), SMTP_USER, SMTP_PASS or SMTP_PASSWORD, optional SMTP_PORT; or set RESEND_API_KEY. On Railway, prefer RESEND_API_KEY — SMTP to Gmail usually times out.',
     );
   }
 }
