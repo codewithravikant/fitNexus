@@ -26,9 +26,10 @@ ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 # Generate Prisma client
 RUN npx prisma generate
 
-# Build Next.js
+# Build Next.js (webpack: more predictable in low-RAM CI than default Turbopack; NODE_OPTIONS reduces OOM on Railway)
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+ENV NODE_OPTIONS="--max-old-space-size=4096"
+RUN npx next build --webpack
 
 # Production image, copy all the files and run next
 FROM base AS runner
