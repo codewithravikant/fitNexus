@@ -1,0 +1,162 @@
+# Default policy: do not commit environment files, keys, or local Cursor/IDE agent state.
+# Tracked templates only: `.env.example`, `.env.sample`, `.env.template`, and `*.env.*.example`.
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual environments (never commit)
+venv/
+.venv/
+**/.venv/
+.venv-*/
+**/.venv-*/
+env/
+ENV/
+
+# IDE
+.vscode/
+.idea/
+.continue/
+**/.continue/
+*.swp
+*.swo
+*~
+
+# Cursor — local IDE/agent state (chats, caches, debug). Safe to commit: `.cursorrules`, `AGENTS.md`.
+.cursor/
+**/.cursor/
+*.plan.md
+.cursor/plans/
+**/.cursor/plans/
+**/.cursor/rules/
+
+# Environment & secrets — never commit real env files (any directory). Only templates are allowlisted.
+.env
+.env.*
+**/.env
+**/.env.*
+*.env
+.env.local
+.env.*.local
+**/.env.local
+**/.env.*.local
+.envrc
+**/.envrc
+*.secret
+secrets/
+**/*.pem
+**/*.key
+.env.enc
+**/.env.enc
+!.env.example
+!**/.env.example
+!.env.sample
+!**/.env.sample
+!.env.template
+!**/.env.template
+!.env.*.example
+!**/.env.*.example
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.coverage.*
+coverage.xml
+
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# Build outputs
+dist/
+dist-ssr/
+*.local
+
+# Next.js
+.next/
+out/
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+logs/
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Local-only status notes (optional; keep on disk, do not commit)
+GHOSTWRITER_STATUS.txt
+REVIEW_QUESTIONS.md
+REVIEW_QUESTIONS.txt
+IMPLEMENTATION_PLAN.md
+IMPLEMENTATION_PLAN.txt
+IMPLEMENTATION_NOTES.md
+IMPLEMENTATION_NOTES.txt
+*implementation*.md
+*implementation*.txt
+*implement*.md
+*implement*.txt
+
+# Extra / archived files (not needed for development or deployment)
+extras/
+
+# Markdown files (keep README.md only)
+*.md
+!README.md
+
+# Always apply on every project - git ignore rules
+# Ignore all Markdown files by default
+*.md
+**/*.md
+# Keep only root README tracked
+!README.md
+# Ignore Cursor and AI workspace metadata
+.cursor/
+.cursor/**
+# Keep Cursor project rule if you want it tracked
+!.cursor/
+!.cursor/rules/
+!.cursor/rules/codecritic-project-rules.mdc
+# Ignore planning/work-in-progress artifacts
+.cursor/planning/
+.cursor/planning/**
+plans/
+plans/**
+planning/
+planning/**
+# Ignore common local/AI artifacts
+.ai/
+.ai/**
+.tmp/
+.tmp/**
+*.log
+# Local environment secrets
+.env
+.env.*
+!.env.example

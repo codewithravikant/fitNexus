@@ -1,0 +1,47 @@
+# Development override — use with the base compose file:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+#
+# Or: npm run docker:dev
+#
+# Hot-reloads source from the repo; node_modules and .next live in named volumes.
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile.dev
+    volumes:
+      - .:/app
+      - fitnexus_dev_node_modules:/app/node_modules
+      - fitnexus_dev_next:/app/.next
+    environment:
+      NODE_ENV: development
+      NEXT_TELEMETRY_DISABLED: "1"
+      WATCHPACK_POLLING: "true"
+      CHOKIDAR_USEPOLLING: "true"
+      # Explicit pass-through so dev override always merges OAuth (fill in project .env)
+      NEXTAUTH_URL: "http://localhost:3000"
+      NEXTAUTH_SECRET: "${NEXTAUTH_SECRET}"
+      AUTH_URL: "http://localhost:3000/api/auth"
+      AUTH_SECRET: "${NEXTAUTH_SECRET}"
+      AUTH_TRUST_HOST: "true"
+      DATABASE_URL: "postgresql://${POSTGRES_USER:-fitnexus_user}:${POSTGRES_PASSWORD:-fitnexus_pass}@db:5432/${POSTGRES_DB:-fitnexus_db}"
+      GITHUB_CLIENT_ID: "${GITHUB_CLIENT_ID:-}"
+      GITHUB_CLIENT_SECRET: "${GITHUB_CLIENT_SECRET:-}"
+      GOOGLE_CLIENT_ID: "${GOOGLE_CLIENT_ID:-}"
+      GOOGLE_CLIENT_SECRET: "${GOOGLE_CLIENT_SECRET:-}"
+    stdin_open: true
+    tty: true
+    command: ["/bin/sh", "/app/scripts/docker-dev-start.sh"]
+    healthcheck:
+      start_period: 120s
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+          cpus: "2.0"
+
+volumes:
+  fitnexus_dev_node_modules:
+  fitnexus_dev_next:

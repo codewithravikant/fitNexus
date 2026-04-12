@@ -2,7 +2,7 @@
 set -euo pipefail
 
 # Scan staged changes for common secret patterns before commit.
-# Local protection only; keeps sensitive values out of remote repos (e.g. GitHub).
+# Local protection only; keeps sensitive values out of remote repos (e.g. Gitea).
 
 if ! command -v git >/dev/null 2>&1; then
   echo "git not found; skipping secret scan."
@@ -34,7 +34,8 @@ if printf '%s\n' "$STAGED_DIFF" | awk '
     if (low ~ /secret[_-]?key[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
     if (low ~ /access[_-]?token[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
     if (low ~ /auth[_-]?token[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
-    if (low ~ /password[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
+    # Require password as a token (not camelCase like handleChangePassword = ...)
+    if (low ~ /(^|[^a-z])password[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
     if (line ~ /(sk-|rk_live_|ghp_)[A-Za-z0-9_\-]{10,}/) bad=1
   }
   END { exit(bad ? 0 : 1) }
