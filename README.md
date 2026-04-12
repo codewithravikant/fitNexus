@@ -10,15 +10,16 @@
 2. [Tech stack](#tech-stack)
 3. [Prerequisites](#prerequisites)
 4. [Getting started](#getting-started)
-5. [Environment variables](#environment-variables)
-6. [Database reset and clean installs](#database-reset-and-clean-installs)
-7. [Security](#security)
-8. [Using the application](#using-the-application)
-9. [AI, observations, and fallbacks](#ai-observations-and-fallbacks)
-10. [Data flow](#data-flow)
-11. [Architecture notes](#architecture-notes)
-12. [Repository layout](#repository-layout)
-13. [Troubleshooting](#troubleshooting)
+5. [Railway deployment](#railway-deployment)
+6. [Environment variables](#environment-variables)
+7. [Database reset and clean installs](#database-reset-and-clean-installs)
+8. [Security](#security)
+9. [Using the application](#using-the-application)
+10. [AI, observations, and fallbacks](#ai-observations-and-fallbacks)
+11. [Data flow](#data-flow)
+12. [Architecture notes](#architecture-notes)
+13. [Repository layout](#repository-layout)
+14. [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -117,6 +118,22 @@ Open **http://localhost:3000**. Compose brings up the database, applies migratio
 ```bash
 docker compose up -d --build
 ```
+
+## Railway deployment
+
+The repo includes [`railway.toml`](railway.toml) (Dockerfile builder, `/api/health` healthcheck). Deploy the **web service** from this repository and add a **PostgreSQL** plugin (or external Postgres). Railway injects `PORT` and `DATABASE_URL` automatically.
+
+**Build-time**
+
+- **`DATABASE_URL`** — Required for `prisma generate` and `next build` inside the image. Use the same variable Railway provides for Postgres (Railway passes service variables into Docker builds when names match your `ARG`s).
+- **`NEXT_PUBLIC_APP_URL`** — Set to your public app URL (for example `https://<service>.up.railway.app` or your custom domain). This is baked into the client bundle and used for Server Actions allowed origins. After you add a generated domain or custom hostname, set this and redeploy.
+
+**Runtime** (service variables)
+
+- Copy values from [Environment variables](#environment-variables): `NEXTAUTH_SECRET`, `AUTH_SECRET` (same as NextAuth secret), `NEXTAUTH_URL` and `AUTH_URL` (use your **https** public origin, not localhost), `AUTH_TRUST_HOST=true`, `NEXT_PUBLIC_APP_URL` and `NEXT_PUBLIC_APP_NAME`, email and AI keys as needed.
+- OAuth redirect URIs must use your production origin, for example `https://<your-host>/api/auth/callback/google`.
+
+On each deploy, [`start.sh`](start.sh) runs `prisma migrate deploy` before `node server.js`, so migrations apply automatically.
 
 ---
 

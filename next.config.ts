@@ -1,5 +1,26 @@
 import type { NextConfig } from "next";
 
+/** Hostnames (and host:port) allowed for Server Actions — include prod URL via NEXT_PUBLIC_APP_URL or RAILWAY_STATIC_URL at build time. */
+function serverActionAllowedOrigins(): string[] {
+  const origins = new Set<string>([
+    "localhost:3000",
+    "127.0.0.1:3000",
+    "localhost:3001",
+    "127.0.0.1:3001",
+  ]);
+  for (const key of ["NEXT_PUBLIC_APP_URL", "RAILWAY_STATIC_URL"] as const) {
+    const raw = process.env[key];
+    if (!raw) continue;
+    try {
+      const u = new URL(raw);
+      origins.add(u.port ? `${u.hostname}:${u.port}` : u.hostname);
+    } catch {
+      // ignore invalid URL
+    }
+  }
+  return [...origins];
+}
+
 const nextConfig: NextConfig = {
   output: "standalone",
   images: {
@@ -16,7 +37,7 @@ const nextConfig: NextConfig = {
   ],
   experimental: {
     serverActions: {
-      allowedOrigins: ["localhost:3000"],
+      allowedOrigins: serverActionAllowedOrigins(),
     },
   },
 };

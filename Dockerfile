@@ -19,6 +19,10 @@ COPY . .
 ARG DATABASE_URL=postgresql://dummy:dummy@localhost:5432/dummy
 ENV DATABASE_URL=${DATABASE_URL}
 
+# Baked into the client bundle at build time — set in Railway to your public app URL (e.g. https://*.up.railway.app)
+ARG NEXT_PUBLIC_APP_URL=
+ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
+
 # Generate Prisma client
 RUN npx prisma generate
 
