@@ -66,8 +66,8 @@ export function SignupForm() {
               </div>
               <h3 className="text-lg font-semibold">Account created — email not sent</h3>
               <p className="text-sm text-muted-foreground text-left max-w-md mx-auto">
-                Mail isn&apos;t configured or the provider rejected the send. Add <code className="text-xs bg-muted px-1 rounded">RESEND_API_KEY</code> or{' '}
-                <code className="text-xs bg-muted px-1 rounded">SMTP_*</code> in <code className="text-xs bg-muted px-1 rounded">.env</code>, restart the app, then use{' '}
+                Mail isn&apos;t configured or the provider rejected the send. Set <code className="text-xs bg-muted px-1 rounded">RESEND_API_KEY</code> or{' '}
+                <code className="text-xs bg-muted px-1 rounded">SMTP_*</code> in your environment (e.g. <code className="text-xs bg-muted px-1 rounded">.env</code> locally or Railway Variables), redeploy or restart, then use{' '}
                 <strong>Forgot password</strong> or verify your user in the database. Your account still exists.
               </p>
             </>
