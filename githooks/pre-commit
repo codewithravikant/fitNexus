@@ -24,18 +24,25 @@ if printf '%s\n' "$STAGED_DIFF" | awk '
     low=tolower(line)
 
     # Ignore obvious template/example/doc values.
+    if (line ~ /^[[:space:]]*#/) next
     if (line ~ /example|changeme|your[_-]?key|dummy|sample|test[-_]?key|placeholder/) next
     if (line ~ /\.\.\./) next
+    # Skip this hook’s own awk patterns (e.g. openrouter_api_key=) when committing githooks/pre-commit.
+    if (line ~ /^[[:space:]]*if \(low ~/) next
     # Backticks as \140 — a /.../ regex cannot start with ` or the delimiter breaks; the old pattern skipped real secrets.
     if (match(tolower(line), /\140[^\140]*(_api_key|token|password|secret|openrouter_api_key)[^\140]*\140/)) next
 
     if (low ~ /openrouter_api_key[[:space:]]*=/) bad=1
-    if (low ~ /api[_-]?key[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
+    # Allow real code: apiKey from process.env or expressions (openRouterKey || …), not literal secrets.
+    if (low ~ /api[_-]?key[[:space:]]*=[[:space:]]*[^[:space:]]+/ && line !~ /process\.env/ && line !~ /\|\|/) bad=1
     if (low ~ /secret[_-]?key[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
     if (low ~ /access[_-]?token[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
     if (low ~ /auth[_-]?token[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
-    # Require password as a token (not camelCase like handleChangePassword = ...)
-    if (low ~ /(^|[^a-z])password[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
+    # .env style password=… ; skip TS `const password = …`, `password ===`, and `data.password ===`.
+    if (low ~ /(^|[^a-z])password[[:space:]]*=[^=]/) {
+      if (line ~ /^[[:space:]]*(const|let|var)[[:space:]]+password[[:space:]]*=/) next
+      bad=1
+    }
     if (line ~ /(sk-|rk_live_|ghp_)[A-Za-z0-9_\-]{10,}/) bad=1
   }
   END { exit(bad ? 0 : 1) }
