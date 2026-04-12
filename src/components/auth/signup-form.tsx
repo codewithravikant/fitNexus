@@ -66,11 +66,10 @@ export function SignupForm() {
               </div>
               <h3 className="text-lg font-semibold">Account created — email not sent</h3>
               <p className="text-sm text-muted-foreground text-left max-w-md mx-auto">
-                Outbound mail isn&apos;t working (missing config or Gmail/SMTP rejected the send). On the server, set{' '}
+                Outbound mail isn&apos;t working (missing SMTP or the server rejected the send). Set{' '}
                 <code className="text-xs bg-muted px-1 rounded">SMTP_HOST</code> (or <code className="text-xs bg-muted px-1 rounded">MAIL_HOST</code>),{' '}
-                <code className="text-xs bg-muted px-1 rounded">SMTP_USER</code>, <code className="text-xs bg-muted px-1 rounded">SMTP_PASS</code> (App Password for Gmail), optional{' '}
-                <code className="text-xs bg-muted px-1 rounded">SMTP_PORT</code>, or use <code className="text-xs bg-muted px-1 rounded">RESEND_API_KEY</code>. Apply on the{' '}
-                <strong>web</strong> service (Railway Variables), redeploy, then use <strong>Forgot password</strong> or verify the user in the database. Your account still exists.
+                <code className="text-xs bg-muted px-1 rounded">SMTP_USER</code>, <code className="text-xs bg-muted px-1 rounded">SMTP_PASS</code> (e.g. Gmail App Password), optional{' '}
+                <code className="text-xs bg-muted px-1 rounded">SMTP_PORT</code> / <code className="text-xs bg-muted px-1 rounded">EMAIL_FROM</code>. On hosted platforms, outbound SMTP is often blocked — use a relay your host allows or run mail from your own network. Then use <strong>Forgot password</strong> or verify the user in the database. Your account still exists.
               </p>
             </>
           ) : (

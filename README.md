@@ -50,7 +50,7 @@
 | Data | PostgreSQL 16 (Docker), Prisma 7 |
 | Auth | Auth.js / NextAuth 5 (beta)—credentials, OAuth, 2FA |
 | AI | OpenRouter API (OpenAI-compatible) |
-| Email | Gmail SMTP (primary) + Resend fallback |
+| Email | SMTP (e.g. Gmail with App Password) |
 | Forms | React Hook Form, Zod 4 |
 
 ---
@@ -135,7 +135,7 @@ The repo includes [`railway.toml`](railway.toml) (Dockerfile builder, `/api/heal
 
 On each deploy, [`start.sh`](start.sh) runs `prisma migrate deploy` before `node server.js`, so migrations apply automatically.
 
-**Email on Railway:** Many platforms (including Railway) **block outbound SMTP** (ports 465/587), so connections to Gmail’s `smtp.gmail.com` often end with **`ETIMEDOUT`**. Use **[Resend](https://resend.com)** with **`RESEND_API_KEY`** (HTTPS, port 443) instead of Gmail SMTP for production. You can keep Gmail SMTP in local `.env` for development.
+**Email on Railway:** Many platforms **block outbound SMTP** (ports 465/587), so direct Gmail SMTP often returns **`ETIMEDOUT`**. Options: use an **SMTP relay** your provider allows, **self-host** where outbound SMTP is permitted, or run the app **locally/Docker** with Gmail SMTP for development.
 
 ---
 
@@ -162,7 +162,6 @@ Create `.env` from `.env.example`. **Do not commit secrets.**
 | `GITHUB_CLIENT_ID` / `GITHUB_CLIENT_SECRET` | GitHub OAuth—[GitHub Developer Settings](https://github.com/settings/developers). |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth—[Google Cloud Console](https://console.cloud.google.com/). |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS` | Outbound email (primary path). Gmail often uses an [App Password](https://myaccount.google.com/apppasswords). |
-| `RESEND_API_KEY` | Optional fallback email provider via [Resend](https://resend.com/api-keys). |
 | `EMAIL_FROM` | From address, e.g. `FitNexus <you@gmail.com>`. |
 | `OPENROUTER_MODEL` | Overrides the OpenRouter model (e.g. `google/gemma-2-9b-it:free`). |
 | `OPENAI_EMBEDDING_MODEL` | Optional. Embedding model id for recipe RAG (defaults to `text-embedding-3-small` when using the OpenAI-compatible embeddings endpoint). |
@@ -262,7 +261,7 @@ For encryption at rest and in transit, secret handling, and related practices, s
 | Route | Description |
 |-------|-------------|
 | **`/`** | Landing page: 3D wellness orb, feature overview, how it works. |
-| **`/signup`** | Registration—email/password or OAuth. Email flow supports Resend API or Gmail SMTP for verification. |
+| **`/signup`** | Registration—email/password or OAuth. Verification email uses configured SMTP. |
 | **`/onboarding`** | Six-step profile: **basics**, **goals (1–3)**, **diet** (preferences and restrictions), **fitness**, **lifestyle**, **baseline** (stress, AI consent). |
 | **`/home`** | Command Center: daily AI plan (Top 3), orb, stress check-in, insights, meal of the day, **Generate AI Plan**. |
 | **`/fuel`** | Nutrition: meal guidance, tips, meal log; **`/fuel/recipes`** for allergy-aware browsing and **Inspire Me** content. |
@@ -346,7 +345,7 @@ scripts/
 | Generic or empty AI plans | Verify `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` env vars |
 | Generic “something went wrong” | Database down or migrations not applied—start DB and run `npx prisma migrate deploy` |
 | Slow first Docker build | Normal; later builds use layer cache |
-| Cannot log in after sign-up | Configure `RESEND_API_KEY` or SMTP vars for verification, or verify the user record manually in the database |
+| Cannot log in after sign-up | Configure SMTP vars for verification, or verify the user record manually in the database |
 | Email already registered | See [Database reset and clean installs](#database-reset-and-clean-installs) or remove the user row |
 | Google / GitHub buttons missing or “social sign-in not configured” | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, and `GITHUB_CLIENT_SECRET` in `.env`, then **restart** the server or `docker compose up` so the process picks them up. In [Google Cloud Console](https://console.cloud.google.com/) add authorized redirect URI `http://localhost:3000/api/auth/callback/google` (and production URL when deployed). |
 | Console: `Extension manifest must request permission` / `message port closed` / `background.js` | Comes from **browser extensions** (password managers, ad blockers), not FitNexus. Try an **Incognito/Private** window with extensions disabled, or another browser. |

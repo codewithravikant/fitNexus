@@ -37,7 +37,7 @@ export async function POST(request: Request) {
         emailSent,
         message: emailSent
           ? 'Account created. Please check your email to verify your account.'
-          : 'Account created, but the verification email could not be sent. Configure SMTP (SMTP_HOST or MAIL_HOST, SMTP_USER, SMTP_PASS) or RESEND_API_KEY on the server, or ask an admin to verify your email.',
+          : 'Account created, but the verification email could not be sent. Configure SMTP on the server, or ask an admin to verify your email.',
       },
       { status: 201 }
     );

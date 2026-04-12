@@ -1,4 +1,3 @@
-import { Resend } from 'resend';
 import { SMTPClient } from 'smtp-client';
 
 /** smtp-client ships incomplete typings; runtime exposes STARTTLS helpers used for Gmail port 587. */
@@ -22,7 +21,7 @@ function emailLogoSrc(): string {
   return `${appUrl()}/email-logo.svg`;
 }
 
-function escapeHtml(s: string): string {
+function escapeHtml(s: string) {
   return s
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
@@ -107,12 +106,12 @@ function extractEmailAddress(value: string | undefined): string | undefined {
   return undefined;
 }
 
-function envelopeFromAddress() {
-  return (
+function envelopeFromAddress(): string {
+  const fromEmail =
     extractEmailAddress(process.env.EMAIL_FROM) ||
     extractEmailAddress(process.env.SMTP_USER) ||
-    'onboarding@resend.dev'
-  );
+    smtpEnv('SMTP_USER');
+  return fromEmail || 'noreply@localhost';
 }
 
 function fromAddress() {
@@ -151,20 +150,6 @@ function smtpPass(): string | undefined {
 
 function smtpEnabled() {
   return Boolean(smtpHost() && smtpEnv('SMTP_USER') && smtpPass());
-}
-
-async function sendViaResend(to: string, subject: string, html: string) {
-  const resendKey = process.env.RESEND_API_KEY?.trim();
-  if (!resendKey) {
-    throw new Error('RESEND_API_KEY is not set');
-  }
-  const resend = new Resend(resendKey);
-  await resend.emails.send({
-    from: fromAddress(),
-    to,
-    subject,
-    html,
-  });
 }
 
 function isSmtpPortBlockedError(err: unknown): boolean {
@@ -233,7 +218,7 @@ async function sendViaSmtp(to: string, subject: string, html: string) {
   } catch (err) {
     if (isSmtpPortBlockedError(err)) {
       throw new Error(
-        'SMTP connection failed (often ETIMEDOUT). Railway and many hosts block outbound SMTP ports 465/587. Use RESEND_API_KEY (HTTPS) instead, or run mail from a network that allows SMTP.',
+        'SMTP connection failed (often ETIMEDOUT). Many PaaS hosts block outbound SMTP ports 465/587. Use an SMTP relay your network allows, self-host where SMTP is permitted, or run mail from your local machine with Docker.',
         { cause: err },
       );
     }
@@ -242,31 +227,12 @@ async function sendViaSmtp(to: string, subject: string, html: string) {
 }
 
 async function sendEmail(to: string, subject: string, html: string) {
-  const hasSmtp = smtpEnabled();
-  const hasResend = Boolean(process.env.RESEND_API_KEY?.trim());
-
-  // Resend uses HTTPS (port 443) and works on Railway; SMTP is often blocked there. Try Resend first when both are set.
-  if (hasResend) {
-    try {
-      await sendViaResend(to, subject, html);
-      return;
-    } catch (error) {
-      if (!hasSmtp) {
-        throw error;
-      }
-    }
-  }
-
-  if (hasSmtp) {
-    await sendViaSmtp(to, subject, html);
-    return;
-  }
-
-  if (!hasSmtp && !hasResend) {
+  if (!smtpEnabled()) {
     throw new Error(
-      'No email provider configured. On the web service set SMTP_HOST (or MAIL_HOST), SMTP_USER, SMTP_PASS or SMTP_PASSWORD, optional SMTP_PORT; or set RESEND_API_KEY. On Railway, prefer RESEND_API_KEY — SMTP to Gmail usually times out.',
+      'No SMTP configured. Set SMTP_HOST (or MAIL_HOST), SMTP_USER, SMTP_PASS or SMTP_PASSWORD, and optional SMTP_PORT / EMAIL_FROM.',
     );
   }
+  await sendViaSmtp(to, subject, html);
 }
 
 export async function sendVerificationEmail(email: string, token: string) {
@@ -300,14 +266,12 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 /** For logs only — booleans, no secrets. */
 export function getOutboundEmailDiagnostics(): {
   smtpReady: boolean;
-  resendConfigured: boolean;
   hasHost: boolean;
   hasUser: boolean;
   hasPass: boolean;
 } {
   return {
     smtpReady: smtpEnabled(),
-    resendConfigured: Boolean(process.env.RESEND_API_KEY?.trim()),
     hasHost: Boolean(smtpHost()),
     hasUser: Boolean(smtpEnv('SMTP_USER')),
     hasPass: Boolean(smtpPass()),
