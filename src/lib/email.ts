@@ -1,6 +1,12 @@
 import { Resend } from 'resend';
 import { SMTPClient } from 'smtp-client';
 
+/** smtp-client ships incomplete typings; runtime exposes STARTTLS helpers used for Gmail port 587. */
+type SMTPClientWithTls = SMTPClient & {
+  hasExtension(extension: string): boolean;
+  secure(opts?: { timeout?: number }): Promise<void>;
+};
+
 function appUrl() {
   return process.env.NEXT_PUBLIC_APP_URL || process.env.NEXTAUTH_URL || 'http://localhost:3000';
 }
@@ -113,13 +119,32 @@ function fromAddress() {
   return process.env.EMAIL_FROM || envelopeFromAddress();
 }
 
+/** Trimmed non-empty env (avoids Railway/CLI stray spaces breaking SMTP). */
+function smtpEnv(name: 'SMTP_HOST' | 'SMTP_USER' | 'SMTP_PASS' | 'SMTP_PORT'): string | undefined {
+  const v = process.env[name];
+  if (v == null) return undefined;
+  const t = v.trim();
+  return t.length > 0 ? t : undefined;
+}
+
+/** Many docs use SMTP_PASSWORD; we accept both. */
+function smtpPass(): string | undefined {
+  const a = smtpEnv('SMTP_PASS');
+  if (a) return a;
+  const v = process.env.SMTP_PASSWORD;
+  if (v == null) return undefined;
+  const t = v.trim();
+  return t.length > 0 ? t : undefined;
+}
+
 function smtpEnabled() {
-  return Boolean(process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS);
+  return Boolean(smtpEnv('SMTP_HOST') && smtpEnv('SMTP_USER') && smtpPass());
 }
 
 async function sendViaResend(to: string, subject: string, html: string) {
-  if (process.env.RESEND_API_KEY) {
-    const resend = new Resend(process.env.RESEND_API_KEY);
+  const resendKey = process.env.RESEND_API_KEY?.trim();
+  if (resendKey) {
+    const resend = new Resend(resendKey);
     await resend.emails.send({
       from: fromAddress(),
       to,
@@ -135,20 +160,27 @@ async function sendViaSmtp(to: string, subject: string, html: string) {
     return;
   }
 
-  const host = process.env.SMTP_HOST as string;
-  const user = process.env.SMTP_USER as string;
-  const pass = process.env.SMTP_PASS as string;
-  const port = Number(process.env.SMTP_PORT || '465');
-  const secure = port === 465;
+  const host = smtpEnv('SMTP_HOST') as string;
+  const user = smtpEnv('SMTP_USER') as string;
+  const pass = smtpPass() as string;
+  const port = Number(smtpEnv('SMTP_PORT') || '465');
+  /** Port 465 uses implicit TLS. Port 587 (and most others) need plain connect + STARTTLS before AUTH — required for Gmail. */
+  const implicitTls = port === 465;
   const client = new SMTPClient({
     host,
     port,
-    secure,
-  });
+    secure: implicitTls,
+  }) as SMTPClientWithTls;
+
+  const ehloHostname = process.env.SMTP_EHLO_HOSTNAME?.trim() || host;
 
   await client.connect();
   try {
-    await client.greet({ hostname: 'localhost' });
+    await client.greet({ hostname: ehloHostname });
+    if (!implicitTls && client.hasExtension('STARTTLS')) {
+      await client.secure();
+      await client.greet({ hostname: ehloHostname });
+    }
     await client.authPlain({ username: user, password: pass });
     // SMTP envelope sender must be a plain email address (no display name).
     await client.mail({ from: envelopeFromAddress() });
@@ -173,7 +205,7 @@ async function sendViaSmtp(to: string, subject: string, html: string) {
 
 async function sendEmail(to: string, subject: string, html: string) {
   const hasSmtp = smtpEnabled();
-  const hasResend = Boolean(process.env.RESEND_API_KEY);
+  const hasResend = Boolean(process.env.RESEND_API_KEY?.trim());
 
   if (hasSmtp) {
     try {
@@ -192,7 +224,9 @@ async function sendEmail(to: string, subject: string, html: string) {
   }
 
   if (!hasSmtp && !hasResend) {
-    throw new Error('No email provider configured');
+    throw new Error(
+      'No email provider configured. On Railway, add to the **web** service: RESEND_API_KEY, or SMTP_HOST + SMTP_USER + SMTP_PASS (Gmail App Password; optional SMTP_PORT 465/587). Names must be exact — use SMTP_PASS or SMTP_PASSWORD.',
+    );
   }
 }
 

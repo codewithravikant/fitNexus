@@ -28,7 +28,8 @@ export async function POST(request: Request) {
       await sendVerificationEmail(email, token);
       emailSent = true;
     } catch (emailError) {
-      console.error('Failed to send verification email:', emailError);
+      const detail = emailError instanceof Error ? emailError.message : String(emailError);
+      console.error('Failed to send verification email:', detail, emailError);
     }
 
     return NextResponse.json(

@@ -23,6 +23,10 @@ if [ -n "${RAILWAY_ENVIRONMENT:-}" ] || [ -n "${RAILWAY_SERVICE_ID:-}" ]; then
       exit 1
       ;;
   esac
+  if [ -z "${AUTH_SECRET:-}" ] && [ -z "${NEXTAUTH_SECRET:-}" ]; then
+    echo "start.sh: Set AUTH_SECRET or NEXTAUTH_SECRET on the web service (e.g. openssl rand -base64 32). Auth.js requires it in production." >&2
+    exit 1
+  fi
 fi
 
 echo "Running database migrations..."
