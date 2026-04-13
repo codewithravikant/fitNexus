@@ -304,15 +304,33 @@ async function sendViaSmtp(to: string, subject: string, html: string) {
   }
 }
 
+function emailConfigError(): Error {
+  const base =
+    'No email configured. Set BREVO_API_KEY (Railway → your web service → Variables) and EMAIL_FROM with a Brevo-verified sender, or set SMTP_HOST (or MAIL_HOST), SMTP_USER, and SMTP_PASS (or SMTP_PASSWORD).';
+  const user = Boolean(smtpEnv('SMTP_USER'));
+  const host = Boolean(smtpHost());
+  const pass = Boolean(smtpPass());
+  if (!brevoApiEnabled() && user && !host && !pass) {
+    return new Error(
+      `${base} Hint: only SMTP_USER is set — on Railway use BREVO_API_KEY (HTTPS) instead of partial SMTP, or add SMTP_HOST and SMTP_PASS.`,
+    );
+  }
+  if (!brevoApiEnabled() && user && host && !pass) {
+    return new Error(`${base} Hint: set SMTP_PASS or SMTP_PASSWORD.`);
+  }
+  if (!brevoApiEnabled() && user && !host && pass) {
+    return new Error(`${base} Hint: set SMTP_HOST or MAIL_HOST.`);
+  }
+  return new Error(base);
+}
+
 async function sendEmail(to: string, subject: string, html: string) {
   if (brevoApiEnabled()) {
     await sendViaBrevoApi(to, subject, html);
     return;
   }
   if (!smtpEnabled()) {
-    throw new Error(
-      'No email configured. Set BREVO_API_KEY and EMAIL_FROM (sender verified in Brevo), or set SMTP_HOST (or MAIL_HOST), SMTP_USER, SMTP_PASS or SMTP_PASSWORD, and optional SMTP_PORT / EMAIL_FROM.',
-    );
+    throw emailConfigError();
   }
   await sendViaSmtp(to, subject, html);
 }
@@ -348,6 +366,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 /** For logs only — booleans, no secrets. */
 export function getOutboundEmailDiagnostics(): {
   smtpReady: boolean;
+  brevoApiKeySet: boolean;
   brevoReady: boolean;
   hasHost: boolean;
   hasUser: boolean;
@@ -355,6 +374,7 @@ export function getOutboundEmailDiagnostics(): {
 } {
   return {
     smtpReady: smtpEnabled(),
+    brevoApiKeySet: brevoApiEnabled(),
     brevoReady: Boolean(brevoApiEnabled() && resolveBrevoSender()),
     hasHost: Boolean(smtpHost()),
     hasUser: Boolean(smtpEnv('SMTP_USER')),
