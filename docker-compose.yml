@@ -43,6 +43,7 @@ services:
       OPENAI_BASE_URL: "${OPENAI_BASE_URL:-https://openrouter.ai/api/v1}"
       OPENAI_API_KEY: "${OPENAI_API_KEY:-}"
       OPENAI_MODEL: "${OPENAI_MODEL:-}"
+      BREVO_API_KEY: "${BREVO_API_KEY:-}"
       SMTP_HOST: "${SMTP_HOST}"
       SMTP_PORT: "${SMTP_PORT}"
       SMTP_USER: "${SMTP_USER}"
