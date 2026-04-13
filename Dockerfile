@@ -28,7 +28,8 @@ RUN npx prisma generate
 
 # Build Next.js (webpack: more predictable in low-RAM CI than default Turbopack; NODE_OPTIONS reduces OOM on Railway)
 ENV NEXT_TELEMETRY_DISABLED=1
-ENV NODE_OPTIONS="--max-old-space-size=4096"
+ARG BUILD_NODE_OPTIONS="--max-old-space-size=3072"
+ENV NODE_OPTIONS=${BUILD_NODE_OPTIONS}
 RUN npx next build --webpack
 
 # Production image, copy all the files and run next

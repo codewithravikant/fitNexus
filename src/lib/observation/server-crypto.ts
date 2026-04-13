@@ -1,7 +1,11 @@
 import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'crypto';
 
 function deriveKey(userId: string) {
-  const secret = process.env.NEXTAUTH_SECRET || 'development-secret';
+  const secret =
+    process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET || (process.env.NODE_ENV === 'production' ? '' : 'development-secret');
+  if (!secret) {
+    throw new Error('AUTH_SECRET or NEXTAUTH_SECRET must be set for observation encryption');
+  }
   return createHash('sha256').update(`${secret}:${userId}`).digest();
 }
 

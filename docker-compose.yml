@@ -23,6 +23,8 @@ services:
       dockerfile: Dockerfile
       args:
         DATABASE_URL: ${DATABASE_URL}
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-http://localhost:3000}
+        BUILD_NODE_OPTIONS: ${BUILD_NODE_OPTIONS:---max-old-space-size=3072}
     container_name: fitnexus_app
     restart: unless-stopped
     ports:

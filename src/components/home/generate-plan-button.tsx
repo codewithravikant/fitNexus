@@ -7,6 +7,15 @@ interface GeneratePlanButtonProps {
   hasExistingPlan?: boolean;
 }
 
+function toPlanErrorMessage(status: number, message?: string): string {
+  if (status === 429) return 'Plan limit reached for today (max 3). Please try again tomorrow.';
+  if (status === 401) return 'Your session expired. Please sign in again.';
+  if (status >= 500) {
+    return 'AI is temporarily unavailable. Your existing wellness plan remains active; try again in a minute.';
+  }
+  return message || 'Could not generate a plan right now.';
+}
+
 export function GeneratePlanButton({ hasExistingPlan = false }: GeneratePlanButtonProps) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -23,8 +32,8 @@ export function GeneratePlanButton({ hasExistingPlan = false }: GeneratePlanButt
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || 'Failed to generate plan');
+        const data = await res.json().catch(() => ({}));
+        throw new Error(toPlanErrorMessage(res.status, (data as { error?: string }).error));
       }
 
       // Reload the page to show the new AI-generated plan

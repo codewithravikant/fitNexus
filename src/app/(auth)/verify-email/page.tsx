@@ -18,16 +18,16 @@ function VerifyEmailContent() {
   useEffect(() => {
     if (!token) return;
 
-    fetch(`/api/verify-email?token=${token}`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.error) {
+    fetch(`/api/verify-email?token=${encodeURIComponent(token)}`)
+      .then(async (res) => {
+        const data = (await res.json()) as { error?: string; message?: string };
+        if (!res.ok || data.error) {
           setStatus('error');
-          setMessage(data.error);
-        } else {
-          setStatus('success');
-          setMessage(data.message);
+          setMessage(data.error || 'Verification failed.');
+          return;
         }
+        setStatus('success');
+        setMessage(data.message || 'Email verified successfully');
       })
       .catch(() => {
         setStatus('error');

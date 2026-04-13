@@ -15,6 +15,15 @@ type MealPlanJson = {
   note?: string;
 };
 
+function toMealPlanError(status: number, message?: string): string {
+  if (status === 429) return 'Meal-plan generation limit reached. Please try again later.';
+  if (status === 401) return 'Your session expired. Please sign in again.';
+  if (status >= 500) {
+    return 'AI is temporarily unavailable. Showing your current/offline-safe meal plan.';
+  }
+  return message || 'Could not generate a meal plan right now.';
+}
+
 export function MealPlanPanel({
   initialPlan,
 }: {
@@ -28,7 +37,9 @@ export function MealPlanPanel({
     try {
       const res = await fetch('/api/meal-plans/generate', { method: 'POST' });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Generation failed');
+      if (!res.ok) {
+        throw new Error(toMealPlanError(res.status, (data as { error?: string }).error));
+      }
       toast({ title: 'Meal plan ready', description: 'Your AI meal plan was saved.', variant: 'success' });
       setPlan({
         planJson: data.plan,

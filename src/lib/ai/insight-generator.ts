@@ -87,12 +87,15 @@ function buildFallbackPlan(
   const smartMeal = normalizeSmartMeal(null, p.dietaryPreference);
 
   let insightText: string;
+  let insightExpanded = '';
   if (reason === 'privacy') {
     insightText =
       'AI personalization is turned off in your privacy settings. Here is a safe, general plan for today.';
   } else if (reason === 'no_key') {
     insightText =
-      'Add OPENROUTER_API_KEY (optional: OPENROUTER_MODEL). You can also use OPENAI_API_KEY as a fallback provider. Showing an offline-safe plan for now.';
+      'Showing an offline-safe plan for now—simple movement, hydration, and a short reset you can do today. When an AI provider is configured, we’ll tailor this to your logs.';
+    insightExpanded =
+      'Add OPENROUTER_API_KEY (optional: OPENROUTER_MODEL). You can also use OPENAI_API_KEY as a fallback provider.';
   } else {
     insightText =
       'We could not reach the AI service (network or provider issue). Using a reliable offline plan until the next successful sync.';
@@ -104,7 +107,7 @@ function buildFallbackPlan(
       actions,
       smartMeal,
       preserveMode: pm,
-      insightExpanded: '',
+      insightExpanded,
     },
     modelUsed: FALLBACK_MODEL,
   };

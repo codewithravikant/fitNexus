@@ -1,6 +1,9 @@
 @import "tailwindcss";
 
 :root {
+  /* App shell — desktop sidebar width (updated client-side when collapsed) */
+  --sidebar-width: 15rem;
+
   /* Core Midnight Purple + Teal */
   --background: #070712;
   --foreground: #f5f3ff;

@@ -24,6 +24,14 @@ interface OnboardingWizardProps {
   initialData?: Partial<HealthProfileFormData>;
 }
 
+function profileSaveErrorMessage(status: number, serverMessage?: string): string {
+  if (status === 429) return 'Too many update attempts. Please wait a moment and try again.';
+  if (status >= 500) {
+    return 'Profile saved service is temporarily busy. Please retry in a minute.';
+  }
+  return serverMessage || 'Request failed';
+}
+
 function normalizeWellnessScore(raw: unknown): WellnessScoreData | null {
   if (!raw || typeof raw !== 'object') return null;
   const data = raw as Record<string, number | string | undefined>;
@@ -149,7 +157,7 @@ export function OnboardingWizard({ mode = 'onboarding', initialData }: Onboardin
           }
           toast({
             title: 'Error',
-            description: (result as { error?: string }).error ?? 'Request failed',
+            description: profileSaveErrorMessage(res.status, (result as { error?: string }).error),
             variant: 'destructive',
           });
           return;
@@ -159,7 +167,11 @@ export function OnboardingWizard({ mode = 'onboarding', initialData }: Onboardin
         setWellnessScore(normalizeWellnessScore(result.wellnessScore));
         setStep(6);
       } catch {
-        toast({ title: 'Error', description: 'Failed to save profile. Please try again.', variant: 'destructive' });
+        toast({
+          title: 'Error',
+          description: 'Could not complete this step right now. Please try again.',
+          variant: 'destructive',
+        });
       } finally {
         setLoading(false);
       }

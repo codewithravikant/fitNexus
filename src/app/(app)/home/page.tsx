@@ -81,6 +81,10 @@ export default async function HomePage() {
   const actions = Array.isArray(recs?.actions) ? (recs.actions as typeof defaultActions) : defaultActions;
 
   const insightText = activeInsight?.insightText || 'Welcome to FitNexus! Your personalized insights will appear here as you log more data. Start by completing today\'s actions.';
+  const insightExpanded =
+    typeof recs?.insightExpanded === 'string' && recs.insightExpanded.trim().length > 0
+      ? recs.insightExpanded
+      : undefined;
 
   // Extract smart meal from AI response
   const aiSmartMeal = recs?.smartMeal as typeof defaultMeal | undefined;
@@ -121,7 +125,11 @@ export default async function HomePage() {
           </FadeUpCard>
 
           <FadeUp>
-            <AIInsightCard insightText={insightText} fallbackUsed={activeInsight?.fallbackUsed ?? true} />
+            <AIInsightCard
+              insightText={insightText}
+              insightExpanded={insightExpanded}
+              fallbackUsed={activeInsight?.fallbackUsed ?? true}
+            />
           </FadeUp>
 
           {profile && (

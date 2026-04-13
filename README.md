@@ -59,6 +59,7 @@
 
 - **Node.js 22+**
 - **Docker** and Docker Compose (for PostgreSQL and optional full-stack run)
+- **Docker memory recommendation**: at least **4 GB** (for smoother Next.js production builds)
 
 ---
 
@@ -345,7 +346,8 @@ scripts/
 | `npm audit` shows Next.js vulnerability | Update Next.js: `npm i next@latest` |
 | Generic or empty AI plans | Verify `OPENROUTER_API_KEY` and `OPENROUTER_MODEL` env vars |
 | Generic “something went wrong” | Database down or migrations not applied—start DB and run `npx prisma migrate deploy` |
-| Slow first Docker build | Normal; later builds use layer cache |
+| Re-calibration shows internal error | Retry once, then check DB connectivity/migrations; profile updates now return a safe fallback score if wellness recalculation fails |
+| Slow or heavy Docker build | Set `BUILD_NODE_OPTIONS="--max-old-space-size=2048"` in `.env` for lower RAM usage (slower build), and keep Docker memory at 4 GB+ |
 | Cannot log in after sign-up | Configure `BREVO_API_KEY` + `EMAIL_FROM` or SMTP vars for verification, or verify the user record manually in the database |
 | Email already registered | See [Database reset and clean installs](#database-reset-and-clean-installs) or remove the user row |
 | Google / GitHub buttons missing or “social sign-in not configured” | Set `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GITHUB_CLIENT_ID`, and `GITHUB_CLIENT_SECRET` in `.env`, then **restart** the server or `docker compose up` so the process picks them up. In [Google Cloud Console](https://console.cloud.google.com/) add authorized redirect URI `http://localhost:3000/api/auth/callback/google` (and production URL when deployed). |

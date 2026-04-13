@@ -1,5 +1,6 @@
 import crypto from 'crypto';
 import { prisma } from '@/lib/prisma';
+import { ApiError } from '@/lib/api-error';
 
 function randomToken(): string {
   return crypto.randomBytes(32).toString('hex');
@@ -29,7 +30,10 @@ export async function verifyToken(raw: string, kind: 'verification' | 'password-
       where: { token: raw },
     });
     if (!row || row.expires < new Date()) {
-      throw new Error('Invalid or expired token');
+      throw new ApiError(
+        410,
+        'This verification link is invalid or has expired. If you already verified, sign in. Otherwise request a new verification email from sign-up or support.',
+      );
     }
     await prisma.verificationToken.delete({ where: { token: raw } });
     return row.userId;
@@ -39,7 +43,10 @@ export async function verifyToken(raw: string, kind: 'verification' | 'password-
     where: { token: raw },
   });
   if (!row || row.expires < new Date() || row.used) {
-    throw new Error('Invalid or expired token');
+    throw new ApiError(
+      410,
+      'This password reset link is invalid, expired, or already used. Request a new reset email from the login page.',
+    );
   }
   await prisma.passwordResetToken.update({
     where: { token: raw },

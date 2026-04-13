@@ -8,6 +8,15 @@ import { recalculateAndStoreWellnessScore } from '@/lib/wellness-score';
 import { decodeHobbyContext, encodeHobbyContext } from '@/lib/hobby-context';
 import { stripNullishForProfilePatch } from '@/lib/profile-patch';
 
+async function safeRecalculateWellnessScore(userId: string) {
+  try {
+    return await recalculateAndStoreWellnessScore(userId);
+  } catch (error) {
+    console.error('[profile] wellness score recalculation failed', error);
+    return null;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const session = await auth();
@@ -59,7 +68,7 @@ export async function POST(request: Request) {
       },
     });
 
-    const wellnessScore = await recalculateAndStoreWellnessScore(session.user.id);
+    const wellnessScore = await safeRecalculateWellnessScore(session.user.id);
 
     // Create initial privacy settings
     await prisma.privacySettings.create({
@@ -84,14 +93,15 @@ export async function POST(request: Request) {
         ...decodeHobbyContext(profile.occupationType),
       },
       wellnessScore: {
-        score: wellnessScore.score,
-        habitsScore: wellnessScore.habitsScore,
-        activityScore: wellnessScore.activityScore,
-        progressScore: wellnessScore.progressScore,
-        metabolicScore: wellnessScore.bmiScore,
-        bmi: wellnessScore.bmi,
-        bmiCategory: wellnessScore.bmiCategory,
+        score: wellnessScore?.score ?? 50,
+        habitsScore: wellnessScore?.habitsScore ?? 50,
+        activityScore: wellnessScore?.activityScore ?? 50,
+        progressScore: wellnessScore?.progressScore ?? 50,
+        metabolicScore: wellnessScore?.bmiScore ?? 50,
+        bmi: wellnessScore?.bmi ?? 0,
+        bmiCategory: wellnessScore?.bmiCategory ?? 'NORMAL',
       },
+      warning: wellnessScore ? null : 'Profile saved. Wellness score will refresh shortly.',
     }, { status: 201 });
   } catch (error) {
     return handleApiError(error);
@@ -155,9 +165,12 @@ export async function PATCH(request: Request) {
       hobbyName,
       hobbyActivityStyle,
       selectedGoals,
+      sleepQuality: patchSleepQuality,
+      stressNote: patchStressNote,
       ...baseData
     } = parsed;
 
+    // Not HealthProfile columns — same as POST (stored on HabitLog when provided).
     const data: Record<string, unknown> = { ...baseData };
     const wantsHobbyUpdate = Object.prototype.hasOwnProperty.call(parsed, 'hobbyName')
       || Object.prototype.hasOwnProperty.call(parsed, 'hobbyActivityStyle')
@@ -187,13 +200,22 @@ export async function PATCH(request: Request) {
         where: { userId: session.user.id },
       });
       if (!existing) throw new ApiError(404, 'Profile not found');
-      const wellnessScore = await recalculateAndStoreWellnessScore(session.user.id);
+      const wellnessScore = await safeRecalculateWellnessScore(session.user.id);
       return NextResponse.json({
         profile: {
           ...existing,
           ...decodeHobbyContext(existing.occupationType),
         },
-        wellnessScore,
+        wellnessScore: wellnessScore ?? {
+          score: 50,
+          habitsScore: 50,
+          activityScore: 50,
+          progressScore: 50,
+          bmiScore: 50,
+          bmi: 0,
+          bmiCategory: 'NORMAL',
+        },
+        warning: wellnessScore ? null : 'Profile saved. Wellness score will refresh shortly.',
       });
     }
 
@@ -202,13 +224,33 @@ export async function PATCH(request: Request) {
       data: data as Parameters<typeof prisma.healthProfile.update>[0]['data'],
     });
 
-    const wellnessScore = await recalculateAndStoreWellnessScore(session.user.id);
+    if (patchSleepQuality || patchStressNote) {
+      await prisma.habitLog.create({
+        data: {
+          userId: session.user.id,
+          stressLevel: profile.baselineStressLevel,
+          sleepQuality: patchSleepQuality,
+          notes: patchStressNote,
+        },
+      });
+    }
+
+    const wellnessScore = await safeRecalculateWellnessScore(session.user.id);
     return NextResponse.json({
       profile: {
         ...profile,
         ...decodeHobbyContext(profile.occupationType),
       },
-      wellnessScore,
+      wellnessScore: wellnessScore ?? {
+        score: 50,
+        habitsScore: 50,
+        activityScore: 50,
+        progressScore: 50,
+        bmiScore: 50,
+        bmi: 0,
+        bmiCategory: 'NORMAL',
+      },
+      warning: wellnessScore ? null : 'Profile saved. Wellness score will refresh shortly.',
     });
   } catch (error) {
     return handleApiError(error);

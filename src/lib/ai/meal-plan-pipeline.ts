@@ -133,7 +133,8 @@ function buildFallbackPlan(
   }));
   return {
     meals,
-    note: 'Offline catalog plan — configure OPENROUTER_API_KEY for AI-generated recipes with tool-validated nutrition.',
+    note:
+      'Offline-safe plan from your targets and catalog matches. Add OPENROUTER_API_KEY (optional: OPENROUTER_MODEL) or OPENAI_API_KEY for AI-generated meals with tool-validated nutrition.',
   };
 }
 
