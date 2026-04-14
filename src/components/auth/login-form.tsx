@@ -21,7 +21,12 @@ function safeCallbackPath(raw: string | null): string {
   return raw.split('?')[0] || '/home';
 }
 
-export function LoginForm() {
+type LoginFormProps = {
+  showGithub?: boolean;
+  showGoogle?: boolean;
+};
+
+export function LoginForm({ showGithub = true, showGoogle = true }: LoginFormProps) {
   const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [show2FA, setShow2FA] = useState(false);
@@ -51,14 +56,15 @@ export function LoginForm() {
         if (code === 'email_not_verified') {
           toast({
             title: 'Email not verified',
-            description: 'Please check your inbox and verify your email before signing in.',
+            description:
+              'Open Sign up and use “Resend link” under Create Account to get a new verification email, then check your inbox.',
             variant: 'destructive',
           });
         } else if (code === 'oauth_only') {
           toast({
-            title: 'Sign in with Google or GitHub',
+            title: 'Sign in with your provider',
             description:
-              'This email has no password on file (it was created with a social login). Use the Google or GitHub button above, or use Forgot password to set a password and then sign in with email.',
+              'This email has no password on file (social signup). Use Continue with Google or GitHub when enabled, or Forgot password to set a password and sign in with email.',
             variant: 'destructive',
           });
         } else if (code === 'invalid_2fa') {
@@ -104,12 +110,16 @@ export function LoginForm() {
         <CardTitle className="text-center">Sign in to your account</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <OAuthButtons />
-        <div className="flex items-center gap-3">
-          <span className="flex-1 border-t border-border" />
-          <span className="text-xs uppercase text-muted-foreground">Or continue with email</span>
-          <span className="flex-1 border-t border-border" />
-        </div>
+        {(showGithub || showGoogle) && (
+          <>
+            <OAuthButtons showGithub={showGithub} showGoogle={showGoogle} />
+            <div className="flex items-center gap-3">
+              <span className="flex-1 border-t border-border" />
+              <span className="text-xs uppercase text-muted-foreground">Or continue with email</span>
+              <span className="flex-1 border-t border-border" />
+            </div>
+          </>
+        )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <FormField label="Email" error={errors.email?.message} required>
             <Input type="email" placeholder="you@example.com" {...register('email')} />

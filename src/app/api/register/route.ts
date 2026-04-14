@@ -36,7 +36,7 @@ export async function POST(request: Request) {
         emailSent,
         message: emailSent
           ? 'Account created. Please check your email to verify your account.'
-          : 'Account created, but the verification email could not be sent. Configure SMTP or RESEND_API_KEY in .env, or ask an admin to verify your email.',
+          : 'Account created, but the verification email could not be sent. Configure SMTP (SMTP_HOST, SMTP_USER, SMTP_PASS) in .env, use Resend link on the sign-up page after fixing mail, or ask an admin to verify your email.',
       },
       { status: 201 }
     );

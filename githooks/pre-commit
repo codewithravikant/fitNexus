@@ -30,12 +30,16 @@ if printf '%s\n' "$STAGED_DIFF" | awk '
     if (match(tolower(line), /\140[^\140]*(_api_key|token|password|secret|openrouter_api_key)[^\140]*\140/)) next
 
     if (low ~ /openrouter_api_key[[:space:]]*=/) bad=1
+    # Not literals: reading from env or chaining fallbacks (e.g. OpenRouter client)
+    if (low ~ /api[_-]?key[[:space:]]*=[[:space:]]*process\.env/) next
+    if (low ~ /api[_-]?key[[:space:]]*=[[:space:]]*[a-z_][a-z0-9_]*[[:space:]]*\|\|/) next
     if (low ~ /api[_-]?key[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
     if (low ~ /secret[_-]?key[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
     if (low ~ /access[_-]?token[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
     if (low ~ /auth[_-]?token[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
-    # Require password as a token (not camelCase like handleChangePassword = ...)
-    if (low ~ /(^|[^a-z])password[[:space:]]*=[[:space:]]*[^[:space:]]+/) bad=1
+    # Literal `password = secret` (not `password ===`); NextAuth uses `password = credentials?...`
+    if (low ~ /password[[:space:]]*=[[:space:]]*credentials/) next
+    if (low ~ /(^|[^a-z])password[[:space:]]*=[[:space:]]*[^[:space:]]+/ && low !~ /password[[:space:]]*===/) bad=1
     if (line ~ /(sk-|rk_live_|ghp_)[A-Za-z0-9_\-]{10,}/) bad=1
   }
   END { exit(bad ? 0 : 1) }

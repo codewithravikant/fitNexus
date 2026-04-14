@@ -150,6 +150,11 @@ Create `.env` from `.env.example`. **Do not commit secrets.**
 
 OAuth and outbound email are optional: without them, social login and automated email flows are limited or unavailable. If `OPENROUTER_API_KEY` is missing, the app uses **fallback plans** instead of failing at runtime.
 
+### Authentication email and OAuth
+
+- **Verification email** (new sign-ups and **Resend link** on `/signup`): sent over **SMTP** only. Set `SMTP_HOST` (or `MAIL_HOST`), `SMTP_USER`, and `SMTP_PASS` (or `SMTP_PASSWORD`); see optional table above.
+- **GitHub / Google:** Both client ID and secret must be non-empty for each provider you enable. In the provider console, set the authorization callback to `http://localhost:3000/api/auth/callback/github` or `.../callback/google` (and your production URL when deployed). The sign-in and sign-up pages show each button only when that provider is configured.
+
 ---
 
 ## Phase 2: nutrition catalog, meal plans, and RAG

@@ -12,10 +12,17 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { OAuthButtons } from './oauth-buttons';
 import { toast } from '@/hooks/use-toast';
 
-export function SignupForm() {
+type SignupFormProps = {
+  showGithub?: boolean;
+  showGoogle?: boolean;
+};
+
+export function SignupForm({ showGithub = true, showGoogle = true }: SignupFormProps) {
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
   const [emailSent, setEmailSent] = useState(true);
+  const [resendEmail, setResendEmail] = useState('');
+  const [resendLoading, setResendLoading] = useState(false);
 
   const {
     register,
@@ -53,6 +60,37 @@ export function SignupForm() {
     }
   };
 
+  const onResendVerification = async () => {
+    const trimmed = resendEmail.trim();
+    if (!trimmed) {
+      toast({ title: 'Email required', description: 'Enter the email you registered with.', variant: 'destructive' });
+      return;
+    }
+    setResendLoading(true);
+    try {
+      const res = await fetch('/api/resend-verification', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: trimmed }),
+      });
+      const result = await res.json();
+      if (!res.ok) {
+        toast({
+          title: res.status === 429 ? 'Too many attempts' : 'Could not send',
+          description: result.error || 'Something went wrong.',
+          variant: 'destructive',
+        });
+        return;
+      }
+      toast({
+        title: 'Request received',
+        description: result.message || 'If an account needs verification, check your email.',
+      });
+    } finally {
+      setResendLoading(false);
+    }
+  };
+
   if (success) {
     return (
       <Card>
@@ -66,9 +104,10 @@ export function SignupForm() {
               </div>
               <h3 className="text-lg font-semibold">Account created — email not sent</h3>
               <p className="text-sm text-muted-foreground text-left max-w-md mx-auto">
-                Mail isn&apos;t configured or the provider rejected the send. Add <code className="text-xs bg-muted px-1 rounded">RESEND_API_KEY</code> or{' '}
-                <code className="text-xs bg-muted px-1 rounded">SMTP_*</code> in <code className="text-xs bg-muted px-1 rounded">.env</code>, restart the app, then use{' '}
-                <strong>Forgot password</strong> or verify your user in the database. Your account still exists.
+                Mail isn&apos;t configured or SMTP rejected the send. Add <code className="text-xs bg-muted px-1 rounded">SMTP_HOST</code>,{' '}
+                <code className="text-xs bg-muted px-1 rounded">SMTP_USER</code>, and <code className="text-xs bg-muted px-1 rounded">SMTP_PASS</code> in{' '}
+                <code className="text-xs bg-muted px-1 rounded">.env</code>, restart the app, then use <strong>Resend link</strong> below (on the sign-up form) or{' '}
+                <strong>Forgot password</strong>. Your account still exists.
               </p>
             </>
           ) : (
@@ -98,12 +137,16 @@ export function SignupForm() {
         <CardTitle className="text-center">Create your account</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <OAuthButtons />
-        <div className="flex items-center gap-3">
-          <span className="flex-1 border-t border-border" />
-          <span className="text-xs uppercase text-muted-foreground">Or sign up with email</span>
-          <span className="flex-1 border-t border-border" />
-        </div>
+        {(showGithub || showGoogle) && (
+          <>
+            <OAuthButtons showGithub={showGithub} showGoogle={showGoogle} />
+            <div className="flex items-center gap-3">
+              <span className="flex-1 border-t border-border" />
+              <span className="text-xs uppercase text-muted-foreground">Or sign up with email</span>
+              <span className="flex-1 border-t border-border" />
+            </div>
+          </>
+        )}
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <FormField label="Email" error={errors.email?.message} required>
             <Input type="email" placeholder="you@example.com" {...register('email')} />
@@ -118,6 +161,27 @@ export function SignupForm() {
             Create Account
           </Button>
         </form>
+        <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-3">
+          <p className="text-sm text-muted-foreground">Already registered? Resend a verification link.</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end">
+            <div className="flex-1">
+              <label className="sr-only" htmlFor="resend-verification-email">
+                Email for verification
+              </label>
+              <Input
+                id="resend-verification-email"
+                type="email"
+                placeholder="you@example.com"
+                value={resendEmail}
+                onChange={(e) => setResendEmail(e.target.value)}
+                autoComplete="email"
+              />
+            </div>
+            <Button type="button" variant="outline" className="w-full sm:w-auto shrink-0" loading={resendLoading} onClick={onResendVerification}>
+              Resend link
+            </Button>
+          </div>
+        </div>
       </CardContent>
       <CardFooter className="justify-center">
         <p className="text-sm text-muted-foreground">
